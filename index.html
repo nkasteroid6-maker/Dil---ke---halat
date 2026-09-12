@@ -221,49 +221,99 @@ footer {
     <p>© 2026 Dil Ke Halat</p>
     <p>Written by MASTER NK ❤️</p>
 </footer>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL = "https://pidwdhajfssbgyvvqjwo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_BSVlkYhcqMbaW3cIqDwQqg_Tn2xO1SZ";
 
-let shayaris = JSON.parse(localStorage.getItem("masterNKShayari")) || [
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+let shayaris = [];
+let currentCategory = "All";
+let visibleShayaris = [];
+
+const starterShayaris = [
     {
+        id: "starter-1",
         title: "Adhoora Ishq",
         category: "Love",
-        text: "Tere bina bhi jee rahe hain hum,\nMagar har saans mein kami si hai,\nTu paas nahi hai mere,\nPhir bhi dil mein teri hi nami si hai."
+        text: "Tere bina bhi jee rahe hain hum,\nMagar har saans mein kami si hai,\nTu paas nahi hai mere,\nPhir bhi dil mein tu hi tu hai."
     },
-
     {
+        id: "starter-2",
         title: "Khamoshi",
         category: "Dard",
-        text: "Kuch baatein lafzon ki mohtaaj nahi hoti,\nKuch dard ki koi awaaz nahi hoti,\nSamajhne wala ho agar koi,\nToh khamoshi bhi ek kitaab hoti hai."
+        text: "Kuch baatein lafzon ki mohtaaj nahi hoti,\nKuch dard ki koi awaaz nahi hoti,\nSamajhne wala ho agar koi,\nToh khamoshi bhi bahut kuch keh jaati hai."
     }
-
 ];
 
-let currentCategory = "All";
+async function loadShayari() {
+    const { data, error } = await db
+        .from("shayaris")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-function saveData() {
-    localStorage.setItem("masterNKShayari", JSON.stringify(shayaris));
+    if (error) {
+        console.error(error);
+        shayaris = [...starterShayaris];
+    } else {
+        shayaris = [...data, ...starterShayaris];
+    }
+
+    displayShayari();
+}
+
+async function loginAdmin() {
+    const email = prompt("Admin email daalein:");
+
+    if (!email) return false;
+
+    const password = prompt("Admin password daalein:");
+
+    if (!password) return false;
+
+    const { error } = await db.auth.signInWithPassword({
+        email: email,
+        password: password
+    });
+
+    if (error) {
+        alert("Login failed ❌\n" + error.message);
+        return false;
+    }
+
+    alert("Login successful ✅");
+    return true;
+}
+
+async function checkLogin() {
+    const { data } = await db.auth.getSession();
+
+    if (data.session) {
+        return true;
+    }
+
+    return await loginAdmin();
 }
 
 function displayShayari() {
-
     const container = document.getElementById("shayariContainer");
 
     container.innerHTML = "";
 
-    let filtered = currentCategory === "All"
-        ? shayaris
-        : shayaris.filter(s => s.category === currentCategory);
+    visibleShayaris =
+        currentCategory === "All"
+            ? shayaris
+            : shayaris.filter(s => s.category === currentCategory);
 
-    if (filtered.length === 0) {
+    if (visibleShayaris.length === 0) {
         container.innerHTML =
             '<div class="empty">Is category mein abhi koi shayari nahi hai. ❤️</div>';
         return;
     }
 
-    filtered.forEach((s, index) => {
-
+    visibleShayaris.forEach((s, index) => {
         const div = document.createElement("div");
 
         div.className = "shayari";
@@ -277,34 +327,32 @@ function displayShayari() {
 
             <div class="actions">
                 <button onclick="copyShayari(${index})">📋 Copy</button>
-                <button onclick="shareShayari(${index})">↗️ Share</button>
+                <button onclick="shareShayari(${index})">📤 Share</button>
             </div>
         `;
 
         container.appendChild(div);
-
     });
 }
 
 function escapeHTML(text) {
-
     return text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-
 }
 
 function showCategory(category) {
-
     currentCategory = category;
     displayShayari();
-
 }
 
-function toggleForm() {
+async function toggleForm() {
+    const loggedIn = await checkLogin();
+
+    if (!loggedIn) return;
 
     const form = document.getElementById("formBox");
 
@@ -312,12 +360,17 @@ function toggleForm() {
         form.style.display = "none";
     } else {
         form.style.display = "block";
-        form.scrollIntoView({behavior: "smooth"});
-    }
 
+        form.scrollIntoView({
+            behavior: "smooth"
+        });
+    }
 }
 
-function addShayari() {
+async function addShayari() {
+    const loggedIn = await checkLogin();
+
+    if (!loggedIn) return;
 
     const title = document.getElementById("title").value.trim();
     const category = document.getElementById("category").value;
@@ -328,13 +381,21 @@ function addShayari() {
         return;
     }
 
-    shayaris.unshift({
-        title: title,
-        category: category,
-        text: text
-    });
+    const { error } = await db
+        .from("shayaris")
+        .insert([
+            {
+                title: title,
+                category: category,
+                text: text
+            }
+        ]);
 
-    saveData();
+    if (error) {
+        console.error(error);
+        alert("Shayari save nahi hui ❌\n" + error.message);
+        return;
+    }
 
     document.getElementById("title").value = "";
     document.getElementById("text").value = "";
@@ -343,15 +404,13 @@ function addShayari() {
 
     currentCategory = "All";
 
-    displayShayari();
+    await loadShayari();
 
     alert("Shayari successfully add ho gayi ❤️");
-
 }
 
 function copyShayari(index) {
-
-    const s = shayaris[index];
+    const s = visibleShayaris[index];
 
     const text =
         s.title + "\n\n" +
@@ -361,12 +420,10 @@ function copyShayari(index) {
     navigator.clipboard.writeText(text);
 
     alert("Shayari copy ho gayi 📋");
-
 }
 
 function shareShayari(index) {
-
-    const s = shayaris[index];
+    const s = visibleShayaris[index];
 
     const text =
         s.title + "\n\n" +
@@ -374,22 +431,19 @@ function shareShayari(index) {
         "— MASTER NK\nDil Ke Halat";
 
     if (navigator.share) {
-
         navigator.share({
             title: s.title,
             text: text
         });
-
     } else {
-
         navigator.clipboard.writeText(text);
+
         alert("Share option available nahi hai, text copy kar diya gaya 📋");
-
     }
-
 }
 
-displayShayari();
+loadShayari();
+
 
 </script>
 
