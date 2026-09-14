@@ -441,7 +441,28 @@ function shareShayari(index) {
         alert("Share option available nahi hai, text copy kar diya gaya 📋");
     }
 }
+db.auth.onAuthStateChange(async (event, session) => {
+  if (event === "PASSWORD_RECOVERY") {
+    const newPassword = prompt("Naya password daalein:");
 
+    if (!newPassword) return;
+
+    if (newPassword.length < 6) {
+      alert("Password kam se kam 6 characters ka hona chahiye.");
+      return;
+    }
+
+    const { error } = await db.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      alert("Password update nahi hua ❌\n" + error.message);
+    } else {
+      alert("Password successfully reset ho gaya ✅");
+    }
+  }
+});
 loadShayari();
 
 
