@@ -250,7 +250,7 @@ const starterShayaris = [
 
 async function loadShayari() {
     const { data, error } = await db
-        .from("shayaris")
+        .from("Shayaris")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -382,7 +382,7 @@ async function addShayari() {
     }
 
     const { error } = await db
-        .from("shayaris")
+        .from("Shayaris")
         .insert([
             {
                 title: title,
