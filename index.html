@@ -225,7 +225,7 @@ footer {
 <script>
 const SUPABASE_URL = "https://pidwdhajfssbgyvvqjwo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_BSVlkYhcqMbaW3cIqDwQqg_Tn2xO1SZ";
-
+alert("Supabase: " + typeof window.supabase);
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
